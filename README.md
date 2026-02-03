@@ -1,17 +1,25 @@
-DQN Robot Navigation - Grupo 7 (ROS 2 Jazzy)
-Este repositorio implementa un entrenamiento de navegación autónoma usando Deep Q-Network (DQN) para un robot móvil simulado en Stage, utilizando ROS 2 Jazzy.
+# DQN Robot Navigation – Grupo 7 (ROS 2 Jazzy)
 
-El objetivo es que el robot aprenda a navegar hacia una meta evitando obstáculos a partir de información de LiDAR y odometría.
+Este repositorio implementa un entrenamiento de **navegación autónoma** usando **Deep Q-Network (DQN)** para un robot móvil simulado en **Stage**, utilizando **ROS 2 Jazzy**.
 
-A diferencia de otros proyectos que usan frameworks pesados, aquí usamos scikit-learn para el agente, lo que facilita mucho la integración directa con los nodos de ROS sin romper dependencias de Python.
+El objetivo es que el robot aprenda a navegar hacia una meta evitando obstáculos a partir de información de **LiDAR** y **odometría**.
 
-🛠 Instalación y Dependencias
-Primero, asegúrate de tener Ubuntu 24.04 y ROS 2 Jazzy instalado.
+A diferencia de otros proyectos que usan frameworks pesados (TensorFlow / PyTorch), aquí se utiliza **scikit-learn** (`MLPRegressor`) para el agente DQN, lo que simplifica la integración directa con nodos de ROS sin conflictos de dependencias.
 
-1. Paquetes de ROS necesarios
-Copia y pega esto en la terminal para instalar lo básico de Stage y mensajes de navegación:
+---
 
-Bash
+## 🛠️ Instalación y dependencias
+
+### Requisitos
+
+* Ubuntu **24.04**
+* **ROS 2 Jazzy** correctamente instalado y configurado
+
+### Paquetes ROS necesarios
+
+Instala los paquetes básicos para Stage y mensajes de navegación:
+
+```bash
 sudo apt install \
   ros-jazzy-stage-ros \
   ros-jazzy-navigation-msgs \
@@ -19,74 +27,128 @@ sudo apt install \
   ros-jazzy-sensor-msgs \
   ros-jazzy-nav-msgs \
   ros-jazzy-std-srvs
-2. Python
-Ojo: Estamos usando sklearn para el MLPRegressor.
-Bash
+```
+
+### Dependencias de Python
+
+El agente DQN usa `scikit-learn` para la red neuronal:
+
+```bash
 sudo apt install python3-sklearn python3-numpy python3-matplotlib
-🚀 Cómo ponerlo a correr
-Construcción del Workspace
-Clona el repositorio dentro de tu workspace ROS 2:
-Bash
+```
+
+---
+
+## 🚀 Ejecución del proyecto
+
+### 1. Construcción del workspace
+
+Clona el repositorio dentro de un workspace de ROS 2:
+
+```bash
 mkdir -p ~/proyecto_ws/src
 cd ~/proyecto_ws/src
 git clone https://github.com/TU_USUARIO/dqn_robot_nav.git
+```
+
 Construye el workspace:
+
+```bash
 cd ~/proyecto_ws
 colcon build
 source install/setup.bash
+```
 
-Ejecución del entrenamiento
-Para que funcione, necesitas dos terminales (no olvides hacer source en ambas):
+---
 
-Terminal 1: El simulador
+### 2. Ejecución del entrenamiento
 
-Bash
+⚠️ Necesitarás **dos terminales** (recuerda hacer `source install/setup.bash` en ambas).
+
+#### Terminal 1 – Simulador Stage
+
+```bash
 ros2 launch stage_ros2 stage.launch.py
-Asegúrate de que el mundo de Stage esté publicando en /base_scan y /odom, si no, el agente se quedará esperando datos eternamente, lo puedes comprobar en una nueva terminal con
-Bash
+```
+
+Asegúrate de que Stage esté publicando en los tópicos:
+
+* `/base_scan`
+* `/odom`
+
+Puedes verificarlo con:
+
+```bash
 ros2 topic echo /base_scan
 ros2 topic echo /odom
+```
 
-Terminal 2: El entrenamiento
+Si estos tópicos no publican, el agente se quedará esperando datos.
 
-Bash
+---
+
+#### Terminal 2 – Entrenamiento DQN
+
+```bash
 ros2 launch dqn_robot_nav dqn_training.launch.py
-🧠 Detalles del Agente DQN
-🎯 Espacio de acciones
+```
 
-Acciones discretas:
+Esto iniciará el entrenamiento del agente DQN y el reseteo automático del robot en Stage.
 
-Acción	Movimiento
-0	Avanzar
-1	Girar izquierda
-2	Girar derecha
-3	Avanzar + izquierda
-4	Avanzar + derecha
+---
 
-Las velocidades se pueden ajustar en environment.py.  
-Si ves que el robot se queda "atrapado" girando sobre sí mismo, revisa los parámetros de recompensa en environment.py.
+##  Detalles del agente DQN
 
-📂 Estructura del repositorio
+###  Espacio de acciones
+
+Acciones discretas utilizadas por el agente:
+
+| Acción | Movimiento                |
+| -----: | ------------------------- |
+|      0 | Avanzar                   |
+|      1 | Girar izquierda           |
+|      2 | Girar derecha             |
+|      3 | Avanzar + girar izquierda |
+|      4 | Avanzar + girar derecha   |
+
+Las velocidades lineales y angulares pueden ajustarse en `environment.py`.
+
+> 💡 Si el robot se queda girando en un mismo lugar, revisa la función de recompensa en `environment.py` (penalización por rotación y recompensa por progreso).
+
+---
+
+## 📂 Estructura real del repositorio
+
+```text
 dqn_robot_nav/
-├── dqn_agent.py # Agente DQN (MLPRegressor + replay + target network)
-├── environment.py # Entorno ROS2 (StageEnv)
-├── state_processor.py # Procesamiento del estado (LiDAR + goal)
-├── train_node.py # Nodo principal de entrenamiento
-├── reset_stage.py # Wrapper para reset de Stage y odometría
+├── dqn_agent.py          # Agente DQN (MLPRegressor, replay buffer, target network)
+├── environment.py        # Entorno ROS 2 (StageEnv)
+├── state_processor.py    # Procesamiento del estado (LiDAR + meta)
+├── train_node.py         # Nodo principal de entrenamiento
+├── reset_stage.py        # Wrapper para reset de Stage y odometría
 ├── launch/
-│ └── dqn_training.launch.py
+│   └── dqn_training.launch.py
 └── README.md
+```
 
-📈 Resultados
-Los modelos se guardan automáticamente en carpetas con la fecha actual (results_YYYYMMDD_...).
+---
 
-.pkl: El modelo entrenado (pesa poco).
+## 📈 Resultados
 
-training_results.png: Gráfica de recompensa por episodio. Útil para ver si el robot está aprendiendo algo o si la recompensa está estancada.
+Durante el entrenamiento se generan automáticamente carpetas de resultados:
 
-📝 Notas y Errores Comunes
-Lag en el Reset: A veces Stage tarda un par de segundos en publicar el primer escaneo tras un reset. El código tiene un pequeño sleep para evitar errores de puntero nulo.
+* `results_YYYYMMDD_*/`
 
-Rendimiento: Si el entrenamiento va muy lento, cierra la ventana de visualización de Stage si no la necesitas.
+  * `*.pkl` → modelo entrenado
+  * `training_results.png` → gráfica de recompensa por episodio
 
-Autores: Daniel Callata, Jhoselin Fernandez, Patricio Flores.
+Estas gráficas permiten evaluar si el agente está aprendiendo o si la recompensa está estancada.
+
+---
+
+
+## 👥 Autores
+
+* Daniel Callata
+* Jhoselin Fernandez
+* Patricio Flores
